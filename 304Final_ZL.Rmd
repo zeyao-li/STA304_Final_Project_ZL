@@ -1,0 +1,179 @@
+---
+title: "Study of Variables Influencing Whether a COVID-19 patient in Toronto is Hospitalized"
+author: "Zeyao Li"
+date: "December 21, 2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r,include=FALSE}
+library(tidyverse)
+library(knitr)
+library(broom)
+```
+
+```{r,include=FALSE}
+covid19_cases<-read_csv("covid19_cases_cleaned.csv")
+```
+
+# Abstract
+
+This report studies the factors that affect whether a COVID-19 patient in Toronto should be hospitalized. Logistic regression model is fitted by using independent variables of age, neighbourhood, source of infection, and gender. The results show it is more likely that older patients and male patients are admitted into hospitals to treat COVID-19.
+
+# Keywords
+
+COVID-19, Toronto, Logistic Regression, Hospitalization, Age, Neighbourhood, Source of Infection, Gender
+
+# Introduction
+
+In 2020, COVID-19 is the biggest challenge. It has a large impact around the world by disturbing daily life negatively. After the outbreak of COVID-19 at the start of 2020, it was not long before City of Toronto has been affected. As confirmed by the National Microbiology Lab in Winnipeg in January 27, 2020 , "a man in quarantine in Sunnybrook Hospital is Canada's first documented case of the new coronavirus"(CBC News), which was also the first positive case in Toronto. Over the year, the number of confirmed cases climbs up significantly. As of December 18, 2020, there are total of 52,191 recorded cases in Toronto(D'andrea). During the outbreak of COVID-19, health care system of Toronto faces great pressures to combat the virus. "With GTA hospitals beginning to overflow, health officials and medical professionals are sounding the alarm"(Staff). With limiting spaces for hospitalizations, people with light symptoms should stay at home for self-isolation and leave spaces of hospitalizations for people with serious symptoms. Thus, it is crucial to identify the factors that contributing to whether a patient is hospitalized. 
+
+One common way to analyze relatinships by variables is by using logistic regression. Logistic regression performs a predictive analysis when the dependent variable is binary. Also, similar to other regression analysis, logistic regression could be used to explain the relationship between independent and dependent variables(What is Logistic Regression). The main goal of this report is to predict the whether a patient should be admitted into hospital, which is a binary outcome. Thus, logistic regression is an appropriate choice to use.
+
+In this report, the data set is obtained from Toronto Open Data Portal. The data would be explained more specifically in the Methodology section(Section 2) as well as the model used to predict probability of hospitalization of patients in Toronto. In the Results section(Section 3), summary of data and model's output would be provided. Lastly, interpretations of results and discussions of weaknesses and next steps from this study would be included in the Discussion section(Section 4).
+
+
+# Methodology
+
+## Data
+
+As mentioned earlier in Section 1, the data set about information of COVID-19 patients from Toronto is used to conduct study in this report. All cases that are tested positive before December 10, 2020 are included in this data set. In other words, the data set used in this report is a census of all positive cases in Toronto before December 10, 2020. The data is obtained from Toronto Open Data Portal, which is a website with "digital data that is made available with the technical and legal characteristics necessary for it to be freely used, reused, and redistributed by anyone, anytime and anywhere"(City of Toronto). The contributor for COVID-19 data is Toronto Public Health. Since Toronto Public Health is an authoritative organization, the data should be accurate and reliable to perform analysis. 
+
+Some data cleanings were performed before using it in this report. In the cleaning process, the outcome variable, "is the patient ever hospitalized", is assigned a factor of 0 and 1 for each case, where 0 means "no" and 1 means "yes". In this case, "ever hospitalized" includes COVID-19 patients who were admitted into hospitals before and those who are currently hospitalized. Meanwhile, 4 predictors are chosen for this report to predict the probability of admitting into hospital. Cases with missing value for at least one predictor are removed to prevent errors. All four predictors are categorical, and here are lists of categories for each predictor.
+
+1. age of patients: 19 and younger, 20 to 29 Years, 30 to 39 Years, 40 to 49 Years, 50 to 59 Years, 60 to 69 Years, 70 to 79 Years, 80 to 89 Years, 90 and older
+
+2. neighbourhood: Agincourt North, Agincourt South-Malvern West, Alderwood, Annex, Banbury-Don Mills (These are the neighbourhoods where people are test positived. There are 140 neighbourhoods in total, and a complete list would be provided in Appendix)
+
+3. source of infection: Close contact, Community, Healthcare, Institutional, N/A - Outbreak associated, Pending, Travel
+
+4. gender: female, male, other, transgender
+
+
+## Model
+```{r,include=FALSE}
+# Fit data into a logistic regression model
+lmod_covid19<-glm(ever_in_hospital~age_group+neighbourhood+
+      source_of_infection+gender,data=covid19_cases,family="binomial")
+```
+
+In this section, the chosen model of logistic regression would be introduced. Since all independent variables are categorical, "dummy" variable coding would be used for each independent variable in logistic regression. The set up of the model is the following:
+
+$$ log(\frac{\hat{p}}{1-\hat{p}}) = \beta_{0}+\beta_{1}  x_{age} +\beta_{2}  x_{neighbourhood}+\beta_{3}  x_{infection\:source}+\\ \beta_{4}  x_{gender} $$
+
+$log(\frac{\hat{p}}{1-\hat{p}})$ represents the log odds of admitting into hospitals.
+
+$\hat{p}$ is the probability of admitting into hospital. 
+
+$\beta_{0j}$ represents the intercept parameter, which is the log odds of admitting into hospitals when age is in the range of 19 and younger; neighbourhood is Agincourt North; source of infection is close contact; gender is female.
+
+For $\beta_1$, $\beta_2$, $\beta_3$, and $\beta_4$, those are the slope parameters. For each $\beta$, it is the change in log odds of admitting into hospitals comparing to reference level when a single category in the variables is 1 in dummy variable coding. 
+
+
+```{r,include=FALSE}
+# Find AIC for two models
+AIC(glm(ever_in_hospital~age_group+neighbourhood+
+      source_of_infection+gender,data=covid19_cases,family="binomial"))
+AIC(glm(ever_in_hospital~age_group+
+      source_of_infection+gender,data=covid19_cases,family="binomial"))
+```
+
+Originally, two models were built for this study. Besides the model introduced above, a second model had explanatory variables of age, source of infection, and gender. However, AIC is 14455.2 for the second model and 14351.57 for the model introduced above. Thus, since better model usually has lower AIC, the final model in this report consists of age, neighbourhood, source of infection, and gender as explanatory variables.
+
+In the next section, the logistic regression model would be fitted on R and results would be presented.
+
+# Results
+
+```{r,echo=FALSE}
+# Create a result table for number of patients hospitalized in different age groups
+covid_age<-covid19_cases%>%filter(ever_in_hospital!=0)%>%group_by(age_group)%>%count()
+colnames(covid_age)[1] <- "age group"
+colnames(covid_age)[2] <- "number"
+kable(covid_age,align="l",caption = "Table 1: number of patients hospitalized in different age groups")
+```
+
+Table 1 shows the number of patients who are admitted into hospitals for different age groups. There is a trend that for people who are older, number of hospitalized patients increases. However, the number of patients drop from 80 to 89 years to 90 and older.
+
+
+
+```{r,echo=FALSE}
+# Create a result table for number of patients hospitalized with different genders
+covid_gender<-covid19_cases%>%filter(ever_in_hospital!=0)%>%group_by(gender)%>%count()
+colnames(covid_gender)[1] <- "gender"
+colnames(covid_gender)[2] <- "number"
+kable(covid_gender,align="l", caption = "Table 2: number of patients hospitalized with different genders")
+```
+
+Table 2 summarizes hospitalized patients by genders. As shown from the table, there is no other or transgender patients admitted into hospitals. There are more male patients than female patients, but these two numbers do not differ by much.
+
+
+
+
+```{r,echo=FALSE}
+#Create a table for summary from fitted logistic regression model
+kable(broom::tidy(lmod_covid19),caption="Table 3: summary of logistic regression model")
+```
+
+Table 3 is a summary of outputs from fitting data into logistic regression model. The estimate of intercept is around -4.9065. As stated in the model section, the estimate of intercept is the log odds of admitting into hospitals when age is in the range of 19 and younger; neighbourhood is Agincourt North; source of infection is close contact; gender is female. 
+
+In order to interpret the estimates of $\beta$, reference category should be included. For the variable age group, the reference category is 19 and younger. Thus, for instance, the estimate of $\beta$ for patients who fall in the age group of 20 to 29 years is around 0.3197. It means that keeping other variables constant, in comparison to patients from age group of 19 and younger, the log odds of admitting into hospitals for patients in age group of 20 to 29 years are higher by 0.3197 on average. For other variables in age group, the interpretations of estimates of $\beta$ are similar based on the reference group of 19 and younger. Likewise, since all variables are categorical, similar types of interpretations could be applied for estimates of $\beta$ of other independent variables. The only difference here is the reference category of each independent variable. Agincourt North is the reference category in the variable neighbourhood; Close contact is the reference category in the variable source of infection; Female is the reference category in the variable gender.
+
+# Discussion
+
+## Summary
+
+In previous sections, after introducing the background and main objective of this report, data and model are thoroughly discussed. In the Result section, two tables are used to show number of hospitalized patients with respect to age and gender. A third table is created to present the summaries of outputs from logistic regression model. For the rest sections, findings from results would be concluded as well as weaknesses and potential improvements of the report.
+
+## Conclusions
+
+By using a benchmark of 0.05, it is possible to examine the significance of categories of each variable for predicting probability of hospitalization. As shown from Table 3, for the age group, the estimates of $\beta$ for all categories except age group of 20 to 29 years have a p-value less than 0.05, which suggests these categories are useful predictors. It is worth-noticing that the estimates of $\beta$ of age group increase as age increases, but it drops from age group of 80 to 89 years towards 90 and older. This finding is consistent with results from Table 1. Thus, for people who tested positive, there is an increasing chance of hospitalization if they are older.
+
+For variables neighbourhood and source of infection, there are only a few p-values for the estimate of $\beta$ that are less than the significance level of 0.05. This indicates that there might be multicollinearity within each category such that they are highly correlated, so it is not useful to formally conclude from these neighbourhood and source of infection.
+
+The last independent variable is gender. Table 3 shows that p-value for estimate of $\beta$ for male is less than 0.05, but p-values are close to 1 for transgender and other. This finding is consistent with Table 2 since there are no other or transgender patients admitted to hospitals, so only categories of male and female are useful predictors. In general, since the estimate of $\beta$ for male patients is positive, the result suggests that male patients have a higher probability of hospitalization.
+
+
+
+## Weakness & Next Steps
+
+This report uses Toronto COVID-19 data set from Toronto Public Health, which is trustworthy, but there are still weaknesses and limitations. On December 10, 2020, this data set was downloaded from Toronto Open Data Portal. Nevertheless, there is an update to the data weekly, so this report is only valid for analyzing COVID-19 cases before December 10, 2020. The data set used in this report is incomplete since the COVID-19 crisis is still lasting, so there could be potential errors, such as positive cases are instead tested negative for COVID-19. Another drawback is that there are too many categories for the variable neighbourhood, and most of them are not significant. Thus, it is hard to draw any useful conclusion from the variable neighbourhood.
+
+Some steps could be taken to improve this report in future. Firstly, it is important to update the logistic regression model in this report with newly updated data. With the most recent data, the model could produce more accurate estimates of $\beta$ and better results. Another possible improvement is combining categories from the variable neighbourhood. For instance, the neighbourhoods "Bayview Village" and "Bayview Woods-Steeles" are very close, so they could be combined to form a single neighbourhood "Bayview". When there are less neighbourhoods but larger size for each of them, a more significant pattern of hospitalized patients might be found. Lastly, the key factor determining whether a patient should be hospitalized is the health of patient. Thus, this report could be paired with another logistic regression model that uses independent variables in medicals' perspectives.
+
+
+# Appendix
+```{r,include=FALSE}
+covid_neighbourhood<-covid19_cases%>%group_by(neighbourhood)%>%count()
+unlist(covid_neighbourhood$neighbourhood)
+```
+
+A) Neighbourhoods: "Agincourt North", "Agincourt South-Malvern West", "Alderwood", "Annex", "Banbury-Don Mills", "Bathurst Manor", "Bay Street Corridor", "Bayview Village", "Bayview Woods-Steeles", "Bedford Park-Nortown", "Beechborough-Greenbrook", "Bendale", "Birchcliffe-Cliffside", "Black Creek", "Blake-Jones", "Briar Hill - Belgravia", "Bridle Path-Sunnybrook-York Mills", "Broadview North", "Brookhaven-Amesbury", "Cabbagetown-South St. James Town", "Caledonia-Fairbank", "Casa Loma""Centennial Scarborough", "Church-Yonge Corridor", "Cliffcrest", "Corso Italia-Davenport", "Danforth", "Danforth-East York", "Don Valley Village", "Dorset Park", "Dovercourt-Wallace Emerson-Junction", "Downsview-Roding-CFB", "Dufferin Grove", "East End-Danforth", "Edenbridge-Humber Valley", "Eglinton East", "Elms-Old Rexdale", "Englemount-Lawrence", "Eringate-Centennial-West Deane", "Etobicoke West Mall"  "Flemingdon Park", "Forest Hill North", "Forest Hill South", "Glenfield-Jane Heights", "Greenwood-Coxwell", "Guildwood" "Henry Farm", "High Park North", "High Park-Swansea", "Highland Creek", "Hillcrest Village", "Humber Heights-Westmount", "Humber Summit", "Humbermede" "Humewood-Cedarvale", "Ionview" "Islington-City Centre West", "Junction Area", "Keelesdale-Eglinton West", "Kennedy Park" "Kensington-Chinatown", "Kingsview Village-The Westway" "Kingsway South", "L'Amoreaux", "Lambton Baby Point", "Lansing-Westgate" "Lawrence Park North", "Lawrence Park South", "Leaside-Bennington", "Little Portugal", "Long Branch", "Malvern", "Maple Leaf", "Markland Wood", "Milliken", "Mimico (includes Humber Bay Shores)", "Morningside", "Moss Park", "Mount Dennis", "Mount Olive-Silverstone-Jamestown" "Mount Pleasant East", "Mount Pleasant West", "New Toronto", "Newtonbrook East", "Newtonbrook West", "Niagara", "North Riverdale", "North St. James Town", "O'Connor-Parkview", "Oakridge", "Oakwood Village", "Old East York", "Palmerston-Little Italy", "Parkwoods-Donalda", "Pelmo Park-Humberlea", "Playter Estates-Danforth" "Pleasant View", "Princess-Rosethorn", "Regent Park", "Rexdale-Kipling" "Rockcliffe-Smythe", "Roncesvalles", "Rosedale-Moore Park", "Rouge" "Runnymede-Bloor West Village", "Rustic", "Scarborough Village", "South Parkdale", "South Riverdale", "St.Andrew-Windfields", "Steeles", "Stonegate-Queensway", "Tam O'Shanter-Sullivan", "Taylor-Massey", "The Beaches", "Thistletown-Beaumond Heights", "Thorncliffe Park", "Trinity-Bellwoods", "University", "Victoria Village", "Waterfront Communities-The Island", "West Hill", "West Humber-Clairville"              "Westminster-Branson", "Weston", "Weston-Pellam Park", "Wexford/Maryvale", "Willowdale East", "Willowdale West", "Willowridge-Martingrove-Richview", "Woburn", "Woodbine Corridor", "Woodbine-Lumsden"                    "Wychwood", "Yonge-Eglinton", "Yonge-St.Clair", "York University Heights", "Yorkdale-Glen Park"
+
+B) Code and data supporting this analysis is available at:
+https://github.com/zeyao-li/STA304_Final_Project_ZL
+
+# References
+
+1. Wu, Changbao, and Mary E. Thompson. "Basic Concepts in Survey Sampling." Sampling Theory and Practice. Springer, Cham, 2020. 3-15.
+
+
+2. Timeline of COVID-19 cases across Canada | CBC News. (2020, March 14). Retrieved from 
+https://www.cbc.ca/news/health/canada-coronavirus-timeline-1.5482310
+
+3. D'andrea, A., &amp; Lavoie, J. (2020, December 21). How many cases of coronavirus are there in Toronto? Retrieved from https://www.toronto.com/news-story/9873970-how-many-cases-of-coronavirus-are-there-in-toronto-/
+
+4. Staff, N. (2020, December 02). More COVID-19 patients in the ICU, GTA hospitals feeling the pressure. Retrieved  from https://toronto.citynews.ca/2020/12/02/more-covid-19-patients-in-the-icu-gta-hospitals-feeling-the-pressure/
+
+5. City of Toronto. (2018, January 11). What is Open Data? Retrieved from https://www.toronto.ca/city-government/data-research-maps/open-data/what-is-open-data/
+
+6. Tidyverse. (n.d.). Retrieved from https://www.tidyverse.org/
+
+7. Xie, Y. (2020, September 22). A General-Purpose Package for Dynamic Report Generation in R [R package knitr version 1.30]. Retrieved from https://cran.r-project.org/web/packages/knitr/index.html
+
+8. Open source &amp; professional software for data science teams. (2020, December 02). Retrieved from https://rstudio.com/
+
+9. Open Data Dataset. (n.d.). Retrieved from https://open.toronto.ca/dataset/covid-19-cases-in-toronto/
+
+10. What is Logistic Regression? (2020, March 09). Retrieved from https://www.statisticssolutions.com/what-is-logistic-regression/
+
