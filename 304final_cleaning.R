@@ -25,3 +25,5 @@ covid19_cases<-covid19_cases%>%filter(source_of_infection!='Unknown/Missing')
 covid19_cases<-covid19_cases%>%filter(gender!='UNKNOWN')
 
 write_csv(covid19_cases, "covid19_cases_cleaned.csv")
+
+write_csv()
