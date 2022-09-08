@@ -26,3 +26,4 @@ covid19_cases<-covid19_cases%>%filter(gender!='UNKNOWN')
 
 write_csv(covid19_cases, "covid19_cases_cleaned.csv")
 
+tst
